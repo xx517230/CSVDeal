@@ -1,0 +1,3 @@
+csvHeader: ^TotalNum,DieNum,StartTime,TestTime\(S\),IntervalTime\(S\),TotalTime\(min\),(SITE,BIN,X,Y,...)?$
+csvBody: (?P<TotalNum>^\d+),(?P<dieNum>\d{,2}),\d{4}/\d{,2}/\d{,2} \d{,2}:\d{,2}:\d{,2},[0-9.]+,[0-9.]+,[0-9.]+,(?P<dieData>(?:\d+,\d+,\d+,\d+,)+)$
+dieData: \d+,\d+,\d+,\d+,

@@ -3,6 +3,7 @@ from PySide2.QtCore import QStandardPaths, QDir
 from Ui_CSVDeal import Ui_MyWindow
 import re
 import csv
+import yaml
 
 
 class MyWindow(QWidget, Ui_MyWindow):
@@ -24,18 +25,15 @@ class MyWindow(QWidget, Ui_MyWindow):
             self.editDir.setText(str(dir).replace("/", "\\"))
             self.pBar.setEnabled(True)
             return
-        MessageBox = QMessageBox()
-        MessageBox.critical(self, "警告", "选择的目录路径为空,请重新选择!!!")
+        QMessageBox.critical(self, "警告", "选择的目录路径为空,请重新选择!!!")
 
     def timeLogDeal(self, fileName):
-        re_csvHeader = re.compile(
-            r"^TotalNum,DieNum,StartTime,TestTime\(S\),IntervalTime\(S\),TotalTime\(min\),(SITE,BIN,X,Y,...)?$"
-        )
-        # 59,5,2024/7/30 10:48:13,4.515,0.451000,1.21,11,13,84,18,12,12,84,19,13,12,84,20,14,12,84,21,15,12,84,22,
-        re_csvBody = re.compile(
-            r"(?P<TotalNum>^\d+),(?P<dieNum>\d{,2}),\d{4}/\d{,2}/\d{,2} \d{,2}:\d{,2}:\d{,2},[0-9.]+,[0-9.]+,[0-9.]+,(?P<dieData>(?:\d+,\d+,\d+,\d+,)+)$"
-        )
-        re_dieData = re.compile(r"\d+,\d+,\d+,\d+,")
+        with open("regex.yaml", encoding="utf-8") as f:
+            reDict = yaml.safe_load(f)
+        re_csvHeader = re.compile(reDict["csvHeader"])
+        re_csvBody = re.compile(reDict["csvBody"])
+        re_dieData = re.compile(reDict["dieData"])
+        dieCnt = 0
         dieCnt = 0
         totalNum = 0
         dieNum = 0
@@ -43,12 +41,12 @@ class MyWindow(QWidget, Ui_MyWindow):
         file = self.editDir.text() + "\\" + fileName
         print(file)
         # 以txt文本模式打开file，并校验文件(使用正则)
-        with open(file, "r") as fp:
+        with open(file, "r", encoding="utf-8") as fp:
             for cnt, line in enumerate(fp, start=1):
                 print(line)
                 if cnt == 1:
                     if not re_csvHeader.search(line):
-                        print(f"{file}头部格式不正确")
+                        QMessageBox.critical(f"{file}头部格式不正确")
                         return
                     continue
                 match = re_csvBody.search(line)
@@ -58,15 +56,17 @@ class MyWindow(QWidget, Ui_MyWindow):
                     dieCnt += dieNum
                     dieDataCount = len(re.findall(re_dieData, match.group("dieData")))
                     if totalNum != dieCnt:
-                        print(
+                        QMessageBox.critical(
                             f"{file}第{cnt}行的TotalNum与每行DieNum相加数不匹配，totalNum={totalNum}, dieCnt={dieCnt}, dieCntFront={dieCnt-dieNum}, dieNum={dieNum}"
                         )
                         return
                     if dieNum != dieDataCount:
-                        print(f"{file}第{cnt}行的DieNum与DieDataCount不匹配")
+                        QMessageBox.critical(
+                            f"{file}第{cnt}行的DieNum与DieDataCount不匹配"
+                        )
                         return
                 else:
-                    print(f"{file}第{cnt}行格式不正确")
+                    QMessageBox.critical(f"{file}第{cnt}行格式不正确")
                     return
 
         # 读取csv文件
@@ -79,8 +79,7 @@ class MyWindow(QWidget, Ui_MyWindow):
     def convertCSV2MAP(self):
         dir = self.editDir.text()
         if not dir:
-            MessageBox = QMessageBox()
-            MessageBox.critical(self, "警告", "请先选择需要转换的目录!!!")
+            QMessageBox.critical(self, "警告", "请先选择需要转换的目录!!!")
             return
         self.fileList = QDir(dir).entryList(QDir.Files, QDir.Name)
         self.pBar.setRange(0, len(self.fileList))
